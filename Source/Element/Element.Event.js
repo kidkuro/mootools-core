@@ -181,10 +181,4 @@ if (!window.addEventListener){
 }
 /*</ltIE9>*/
 
-//<1.2compat>
-
-Element.Events = new Hash(Element.Events);
-
-//</1.2compat>
-
 })();
