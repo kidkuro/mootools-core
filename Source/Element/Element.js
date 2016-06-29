@@ -780,51 +780,6 @@ Element.Properties.html = {
 };
 
 /*<IE>*/
-var supportsTableInnerHTML = Function.attempt(function(){
-	var table = document.createElement('table');
-	table.innerHTML = '<tr><td></td></tr>';
-	return true;
-});
-
-/*<ltFF4>*/
-var tr = document.createElement('tr'), html = '<td></td>';
-tr.innerHTML = html;
-var supportsTRInnerHTML = (tr.innerHTML == html);
-tr = null;
-/*</ltFF4>*/
-
-if (!supportsTableInnerHTML || !supportsTRInnerHTML || !supportsHTML5Elements){
-
-	Element.Properties.html.set = (function(set){
-
-		var translations = {
-			table: [1, '<table>', '</table>'],
-			select: [1, '<select>', '</select>'],
-			tbody: [2, '<table><tbody>', '</tbody></table>'],
-			tr: [3, '<table><tbody><tr>', '</tr></tbody></table>']
-		};
-
-		translations.thead = translations.tfoot = translations.tbody;
-
-		return function(html){
-			var wrap = translations[this.get('tag')];
-			if (!wrap && !supportsHTML5Elements) wrap = [0, '', ''];
-			if (!wrap) return set.call(this, html);
-
-			var level = wrap[0], wrapper = document.createElement('div'), target = wrapper;
-			if (!supportsHTML5Elements) fragment.appendChild(wrapper);
-			wrapper.innerHTML = [wrap[1], html, wrap[2]].flatten().join('');
-			while (level--) target = target.firstChild;
-			this.empty().adopt(target.childNodes);
-			if (!supportsHTML5Elements) fragment.removeChild(wrapper);
-			wrapper = null;
-		};
-
-	})(Element.Properties.html.set);
-}
-/*</IE>*/
-
-/*<IE>*/
 if (document.createElement('div').getAttributeNode('id')) Element.Properties.id = {
 	set: function(id){
 		this.id = this.getAttributeNode('id').value = id;
