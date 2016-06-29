@@ -44,67 +44,6 @@ var map = {
 	}
 };
 
-/*<ltIE9>*/
-var _key = '$delegation:';
-var formObserver = function(type){
-
-	return {
-
-		base: 'focusin',
-
-		remove: function(self, uid){
-			var list = self.retrieve(_key + type + 'listeners', {})[uid];
-			if (list && list.forms) for (var i = list.forms.length; i--;){
-				list.forms[i].removeEvent(type, list.fns[i]);
-			}
-		},
-
-		listen: function(self, match, fn, event, target, uid){
-			var form = (target.get('tag') == 'form') ? target : event.target.getParent('form');
-			if (!form) return;
-
-			var listeners = self.retrieve(_key + type + 'listeners', {}),
-				listener = listeners[uid] || {forms: [], fns: []},
-				forms = listener.forms, fns = listener.fns;
-
-			if (forms.indexOf(form) != -1) return;
-			forms.push(form);
-
-			var _fn = function(event){
-				bubbleUp(self, match, fn, event, target);
-			};
-			form.addEvent(type, _fn);
-			fns.push(_fn);
-
-			listeners[uid] = listener;
-			self.store(_key + type + 'listeners', listeners);
-		}
-	};
-};
-
-var inputObserver = function(type){
-	return {
-		base: 'focusin',
-		listen: function(self, match, fn, event, target){
-			var events = {blur: function(){
-				this.removeEvents(events);
-			}};
-			events[type] = function(event){
-				bubbleUp(self, match, fn, event, target);
-			};
-			event.target.addEvents(events);
-		}
-	};
-};
-
-if (!eventListenerSupport) Object.append(map, {
-	submit: formObserver('submit'),
-	reset: formObserver('reset'),
-	change: inputObserver('change'),
-	select: inputObserver('select')
-});
-/*</ltIE9>*/
-
 var proto = Element.prototype,
 	addEvent = proto.addEvent,
 	removeEvent = proto.removeEvent;

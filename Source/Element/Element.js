@@ -191,31 +191,10 @@ Array.forEachMethod(function(method, name){
 
 Array.mirror(Elements);
 
-/*<ltIE8>*/
-var createElementAcceptsHTML;
-try {
-    createElementAcceptsHTML = (document.createElement('<input name=x>').name == 'x');
-} catch (e){}
-
-var escapeQuotes = function(html){
-	return ('' + html).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-};
-/*</ltIE8>*/
-
 Document.implement({
 
 	newElement: function(tag, props){
 		if (props && props.checked != null) props.defaultChecked = props.checked;
-		/*<ltIE8>*/// Fix for readonly name and type properties in IE < 8
-		if (createElementAcceptsHTML && props){
-			tag = '<' + tag;
-			if (props.name) tag += ' name="' + escapeQuotes(props.name) + '"';
-			if (props.type) tag += ' type="' + escapeQuotes(props.type) + '"';
-			tag += '>';
-			delete props.name;
-			delete props.type;
-		}
-		/*</ltIE8>*/
 		return this.id(this.createElement(tag)).set(props);
 	}
 
@@ -515,14 +494,6 @@ input = null;
 
 /* getProperty, setProperty */
 
-/* <ltIE9> */
-var pollutesGetAttribute = (function(div){
-	div.random = 'attribute';
-	return (div.getAttribute('random') == 'attribute');
-})(document.createElement('div'));
-
-/* <ltIE9> */
-
 Element.implement({
 
 	setProperty: function(name, value){
@@ -530,20 +501,11 @@ Element.implement({
 		if (setter){
 			setter(this, value);
 		} else {
-			/* <ltIE9> */
-			if (pollutesGetAttribute) var attributeWhiteList = this.retrieve('$attributeWhiteList', {});
-			/* </ltIE9> */
 
 			if (value == null){
 				this.removeAttribute(name);
-				/* <ltIE9> */
-				if (pollutesGetAttribute) delete attributeWhiteList[name];
-				/* </ltIE9> */
 			} else {
 				this.setAttribute(name, '' + value);
-				/* <ltIE9> */
-				if (pollutesGetAttribute) attributeWhiteList[name] = true;
-				/* </ltIE9> */
 			}
 		}
 		return this;
@@ -557,18 +519,6 @@ Element.implement({
 	getProperty: function(name){
 		var getter = propertyGetters[name.toLowerCase()];
 		if (getter) return getter(this);
-		/* <ltIE9> */
-		if (pollutesGetAttribute){
-			var attr = this.getAttributeNode(name), attributeWhiteList = this.retrieve('$attributeWhiteList', {});
-			if (!attr) return null;
-			if (attr.expando && !attributeWhiteList[name]){
-				var outer = this.outerHTML;
-				// segment by the opening tag and find mention of attribute name
-				if (outer.substr(0, outer.search(/\/?['"]?>(?![^<]*<['"])/)).indexOf(name) < 0) return null;
-				attributeWhiteList[name] = true;
-			}
-		}
-		/* </ltIE9> */
 		var result = Slick.getAttribute(this, name);
 		return (!result && !Slick.hasAttribute(this, name)) ? null : result;
 	},
@@ -737,27 +687,10 @@ Element.implement({
 		for (i = ce.length; i--;){
 			var node = ce[i], element = te[i];
 			if (!keepid) node.removeAttribute('id');
-			/*<ltIE9>*/
-			if (node.clearAttributes){
-				node.clearAttributes();
-				node.mergeAttributes(element);
-				node.removeAttribute('uniqueNumber');
-				if (node.options){
-					var no = node.options, eo = element.options;
-					for (var j = no.length; j--;) no[j].selected = eo[j].selected;
-				}
-			}
-			/*</ltIE9>*/
 			var prop = formProps[element.tagName.toLowerCase()];
 			if (prop && element[prop]) node[prop] = element[prop];
 		}
 
-		/*<ltIE9>*/
-		if (Browser.ie){
-			var co = clone.getElementsByTagName('object'), to = this.getElementsByTagName('object');
-			for (i = co.length; i--;) co[i].outerHTML = to[i].outerHTML;
-		}
-		/*</ltIE9>*/
 		return document.id(clone);
 	}
 
@@ -806,13 +739,6 @@ Element.implement({
 
 });
 
-/*<ltIE9>*/
-if (window.attachEvent && !window.addEventListener) window.addListener('unload', function(){
-	Object.each(collected, clean);
-	if (window.CollectGarbage) CollectGarbage();
-});
-/*</ltIE9>*/
-
 Element.Properties = {};
 
 Element.Properties.style = {
@@ -852,19 +778,6 @@ Element.Properties.html = {
 	}
 
 };
-
-/*<ltIE9>*/
-// technique by jdbarlett - http://jdbartlett.com/innershiv/
-var div = document.createElement('div');
-div.innerHTML = '<nav></nav>';
-var supportsHTML5Elements = (div.childNodes.length == 1);
-if (!supportsHTML5Elements){
-	var tags = 'abbr article aside audio canvas datalist details figcaption figure footer header hgroup mark meter nav output progress section summary time video'.split(' '),
-		fragment = document.createDocumentFragment(), l = tags.length;
-	while (l--) fragment.createElement(tags[l]);
-}
-div = null;
-/*</ltIE9>*/
 
 /*<IE>*/
 var supportsTableInnerHTML = Function.attempt(function(){
@@ -910,39 +823,6 @@ if (!supportsTableInnerHTML || !supportsTRInnerHTML || !supportsHTML5Elements){
 	})(Element.Properties.html.set);
 }
 /*</IE>*/
-
-/*<ltIE9>*/
-var testForm = document.createElement('form');
-testForm.innerHTML = '<select><option>s</option></select>';
-
-if (testForm.firstChild.value != 's') Element.Properties.value = {
-
-	set: function(value){
-		var tag = this.get('tag');
-		if (tag != 'select') return this.setProperty('value', value);
-		var options = this.getElements('option');
-		for (var i = 0; i < options.length; i++){
-			var option = options[i],
-				attr = option.getAttributeNode('value'),
-				optionValue = (attr && attr.specified) ? option.value : option.get('text');
-			if (optionValue == value) return option.selected = true;
-		}
-	},
-
-	get: function(){
-		var option = this, tag = option.get('tag');
-
-		if (tag != 'select' && tag != 'option') return this.getProperty('value');
-
-		if (tag == 'select' && !(option = option.getSelected()[0])) return '';
-
-		var attr = option.getAttributeNode('value');
-		return (attr && attr.specified) ? option.value : option.get('text');
-	}
-
-};
-testForm = null;
-/*</ltIE9>*/
 
 /*<IE>*/
 if (document.createElement('div').getAttributeNode('id')) Element.Properties.id = {
